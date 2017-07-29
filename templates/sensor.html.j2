@@ -1,0 +1,50 @@
+{% extends "layout.html.j2" %}
+{% block head %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/plotly-latest.min.js') }}" charset="utf-8"></script>
+  <script type="text/javascript">
+    function loadJSON(url, callback) {
+      var xobj = new XMLHttpRequest();
+      //xobj.overrideMimeType("application/json");
+      xobj.open('GET', url, true); // Replace 'my_data' with the path to your file
+      xobj.onreadystatechange = function () {
+        if (xobj.readyState == 4 && xobj.status == "200") {
+          // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+          if(callback)
+            callback(JSON.parse(xobj.responseText));
+        }
+      };
+      xobj.send(null);
+    }
+    document.addEventListener("DOMContentLoaded", function(event) {
+      loadJSON("{{ url_for('show_sensor_values', sensor_id = id) }}", function(values){
+        var data = [];
+        for(track in values) {
+          data.push({
+            x: values[track].map(function(val){return new Date(val.timestamp)}),
+            y: values[track].map(function(val){return val.value}),
+            type: 'scatter',
+            name: track
+          })
+        }
+        graph = document.getElementById('graph');
+        graph.innerHTML = "";
+        Plotly.newPlot(graph, data,
+        {},
+        {
+          showLink: false,
+          displayModeBar: false
+        });
+
+        window.onresize = function() {
+          Plotly.Plots.resize(graph);
+        };
+      })
+      /*
+      */
+    });
+  </script>
+{% endblock %}
+{% block content %}<div id="graph" class="plotly-graph-div">Waiting...</div>
+<!-- {{ dumb }} -->
+{% endblock %}
