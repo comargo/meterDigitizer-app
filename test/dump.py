@@ -57,7 +57,8 @@ def _dump_db(data, output):
     import sys,  os, sqlite3
     from os.path import realpath
     sys.path.insert(0, realpath("../"))
-    os.environ.pop('FLASK_DEBUG')
+    if 'FLASK_DEBUG' in os.environ:
+        os.environ.pop('FLASK_DEBUG')
     import config
     from app import MeterDigitizer
 
