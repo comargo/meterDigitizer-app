@@ -24,6 +24,7 @@
             x: values[track].map(function(val){return new Date(val.timestamp)}),
             y: values[track].map(function(val){return val.value}),
             type: 'scatter',
+            mode: 'lines',
             name: track
           })
         }
