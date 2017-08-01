@@ -2,4 +2,4 @@ Flask
 paho-mqtt
 dnspython
 watchdog
-plotly
+configargparse

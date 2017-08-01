@@ -7,4 +7,4 @@ WORKDIR /meterdigitizer-app
 VOLUME /meterdigitizer-app/db
 VOLUME /meterdigitizer-app/config
 ADD . .
-CMD ["python", "app.py"]
+CMD ["python", "launch.py"]

@@ -1,7 +1,6 @@
 import random
 from datetime import datetime, timedelta
 from math import ceil
-from tqdm import trange
 
 def _sensorSeries(sensorID, sensorName, startTime):
     curTime = startTime
@@ -10,13 +9,13 @@ def _sensorSeries(sensorID, sensorName, startTime):
     count = random.randint(5,10)
     series = []
     value = 0;
-    for _ in trange(count, desc = "%s run"%sensorName):
+    for _ in range(count):
         offset = random.randint(10, 600)
         length = random.randint(10, 600)
         flowSpeed = random.random()
         quantity = ceil(length*flowSpeed)
         curTime += second*offset
-        for _ in trange(quantity):
+        for _ in range(quantity):
             curTime += second/flowSpeed;
             value += 1
             series.append({
@@ -30,7 +29,7 @@ def _sensorSeries(sensorID, sensorName, startTime):
 def generate(nSensors = 6):
     startTime = datetime.now().replace(microsecond=0)
     data = []
-    for i in trange(6, desc = "Sensors"):
+    for i in range(6):
         data.extend(_sensorSeries(i, "sensor%s"%i, startTime))
     data.sort(key = lambda dataEntry: dataEntry['timestamp'])
     return data
