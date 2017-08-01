@@ -70,6 +70,11 @@ def _dump_db(data, output):
     _dump(data, _app_publish(app.mqtt_client))
     del app
     with output:
+        print("""\
+BEGIN TRANSACTION;
+DROP TABLE IF EXISTS "values";
+DROP TABLE IF EXISTS "sensors";
+COMMIT;""", file=output)
         for line in db.iterdump():
             print(line, file=output)
     #save data to sql
