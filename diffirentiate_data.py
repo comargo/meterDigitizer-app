@@ -1,10 +1,19 @@
 from datetime import datetime, timedelta
+def ceil_dt(dt, res):
+    # how many secs have passed this day
+    nsecs = dt.hour*3600 + dt.minute*60 + dt.second + dt.microsecond*1e-6
+    delta = res.seconds - nsecs % res.seconds
+    if delta == res.seconds:
+        delta = 0
+    return dt + timedelta(seconds=delta)
 
 def time_generator(start, stop, delta):
     curTime = start
     while curTime < stop:
         yield curTime
         curTime += delta
+
+
 
 class Differentiator(object):
     """docstring for Differentiator."""
@@ -20,22 +29,21 @@ class Differentiator(object):
     def ProcessData(self, timestamp, value):
         if not self._curTs:
             #First iteration
-            self._min = value
+            self._min = value-0.001
             self._curTs = timestamp
         elif self._curTs != timestamp:
             #New time
             self.data.append({'timestamp': self._curTs, 'value': self._max - self._min})
             # Append zero values for others
             if timestamp:
+                if (timestamp - self._curTs) > self._delta:
+                    self.data.append({'timestamp': self._curTs+self._delta, 'value': 0})
                 for time in time_generator(self._curTs+self._delta, timestamp, self._delta):
                     self.data.append({'timestamp': time, 'value': 0})
                 self._curTs = timestamp
                 self._min = self._max
         #Current minute
         self._max = value
-
-    def ProcessLastData(self):
-        self.ProcessData(None, None)
 
 def differentiate_data(rows):
     data = {
@@ -44,10 +52,8 @@ def differentiate_data(rows):
     }
 
     for row in rows:
-        curTs = row['timestamp'].replace(second = 0, microsecond=0)
+        curTs = ceil_dt(row['timestamp'], timedelta(minutes=1))
         data['minute'].ProcessData(curTs, row['value']);
-        curTs = curTs.replace(minute = 0)
+        curTs = ceil_dt(row['timestamp'], timedelta(hours=1))
         data['hour'].ProcessData(curTs, row['value']);
-    data['minute'].ProcessLastData();
-    data['hour'].ProcessLastData();
     return { key: val.data for key, val in data.items() }

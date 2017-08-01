@@ -23,6 +23,7 @@
           data.push({
             x: values[track].map(function(val){return new Date(val.timestamp)}),
             y: values[track].map(function(val){return val.value}),
+            line: {shape: 'hv'}, 
             type: 'scatter',
             mode: 'lines',
             name: track
