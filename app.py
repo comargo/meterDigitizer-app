@@ -20,16 +20,18 @@ class MeterDigitizer(Flask):
         kwargs['import_name'] = import_name
         Flask.__init__(self, *args, **kwargs)
         self.json_encoder = JSONEncoder
+        self.mqtt_client = None
+        self.web_db = None
         if self.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
             return;
         self.create_db(self.open_db()).close()
-        self.web_db = None
         self.create_routes()
         self.mqtt_connect()
 
     def __del__(self, *err):
-        self.mqtt_client.disconnect()
-        self.mqtt_client.loop_stop()
+        if self.mqtt_client:
+            self.mqtt_client.disconnect()
+            self.mqtt_client.loop_stop()
         if self.web_db:
             self.web_db.close()
 

@@ -8,4 +8,4 @@ if __name__ == '__main__':
     if args.fcgi:
         import sys
         sys.exit("FastCGI mode is not yet supported")
-        app.run(host=args.http_bind, port=args.http_port)
+    app.run(host=args.http_bind, port=args.http_port)
