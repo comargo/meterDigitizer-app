@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import config
-
 import os, sys, datetime
 import sqlite3
 from flask import Flask, render_template, request, json
 from diffirentiate_data import differentiate_data
+import paho.mqtt.client
 
 if __name__ == '__main__':
     sys.exit("Use launch.py to start")
@@ -16,10 +16,14 @@ class JSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 class MeterDigitizer(Flask):
-    def __init__(self, import_name=__name__,*args, **kwargs):
+    def __init__(self,
+                 import_name=__name__,
+                 mqtt_class=paho.mqtt.client.Client,
+                 *args, **kwargs):
         kwargs['import_name'] = import_name
         Flask.__init__(self, *args, **kwargs)
         self.json_encoder = JSONEncoder
+        self.mqtt_class = mqtt_class
         self.mqtt_client = None
         self.web_db = None
         if self.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
@@ -39,7 +43,6 @@ class MeterDigitizer(Flask):
 
     #bind to PORT
     def mqtt_connect(self):
-        import paho.mqtt.client as mqtt
         def mqtt_on_connect(client, userdata, flags, rc):
             self.logger.debug("Connected with result code %s", rc)
             if rc == 0:
@@ -60,7 +63,7 @@ class MeterDigitizer(Flask):
                 client.md_db.execute('INSERT OR IGNORE INTO "values" VALUES (datetime(:timestamp, "localtime"), :id, :value)',
                     jsonMsg)
 
-        self.mqtt_client = mqtt.Client(userdata=self)
+        self.mqtt_client = self.mqtt_class(userdata=self)
         self.mqtt_client.md_database = None
         self.mqtt_client.knownSensors = []
         self.mqtt_client.on_message = mqtt_on_message
@@ -111,13 +114,24 @@ class MeterDigitizer(Flask):
 
     #Database operations
     def open_db(self):
-        dbName = os.path.abspath(config.args.db)
-        dbPath = os.path.dirname(dbName)
-        if not os.path.exists(dbPath):
-            print("Creating path %s"%dbPath)
-            os.makedirs(dbPath, mode=0o770, exist_ok=True)
-        con = sqlite3.connect(database=dbName
-            , detect_types=sqlite3.PARSE_DECLTYPES)
+        connectArgs = {
+            'database': config.args.db,
+            'uri': True,
+            'detect_types': sqlite3.PARSE_DECLTYPES
+        }
+        if not (config.args.db == ":memory:" or config.args.db.startswith("file:")):
+            connectArgs['database'] = os.path.normpath(
+                os.path.join(
+                    os.getcwd(),
+                    os.path.dirname(__file__),
+                    config.args.db
+                    )
+                )
+            dbPath = os.path.dirname(connectArgs['database'])
+            if not os.path.exists(dbPath):
+                print("Creating path %s"%dbPath)
+                os.makedirs(dbPath, mode=0o770, exist_ok=True)
+        con = sqlite3.connect(**connectArgs)
         con.row_factory = sqlite3.Row
         return con
 
