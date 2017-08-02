@@ -3,6 +3,9 @@
 from generator import generate
 from tqdm import tqdm
 import json
+from datetime import timedelta
+import re
+
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, o):
         from datetime import date
@@ -55,8 +58,9 @@ class MocMQTT(object):
 
 def _dump_db(data, output):
     import sys,  os, sqlite3
-    from os.path import realpath
-    sys.path.insert(0, realpath("../"))
+    sys.path.insert(0, os.path.normpath(
+        os.path.join(os.getcwd(), os.path.dirname(__file__), "..")
+        ))
     if 'FLASK_DEBUG' in os.environ:
         os.environ.pop('FLASK_DEBUG')
     import config
@@ -79,14 +83,39 @@ COMMIT;""", file=output)
             print(line, file=output)
     #save data to sql
 
+def get_timedelta(value):
+    match = re.match("^(\d+)(s|m|h|d)*$", value)
+    if not match:
+        raise ValueError("Value should be in format (\d+)(s|m|h|d)*")
+    converter = {
+        "s": "seconds",
+        "m": "minutes",
+        "h": "hours",
+        "d": "days",
+        None: "days"
+        }
+    return timedelta(**{converter[match.group(2)]: int(match.group(1))})
+
+
+
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser();
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--db", type=argparse.FileType('w'))
-    group.add_argument("--mqtt", action="store_true")
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter);
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--db", type=argparse.FileType('w'),
+                       help="Output to SQL file")
+    group.add_argument("--mqtt", action="store_true",
+                       help="Output to MQTT brokker")
+    parser.add_argument("--sensors", "-s", default=6, type=int,
+                        help="Number of generated sensors")
+    parser.add_argument("--timespan", "-t", default="1d", type=get_timedelta,
+                        help="Generated duration")
+    parser.add_argument("--length", "-l", default="20m", type=get_timedelta,
+                        help="Range of random length of series")
+    parser.add_argument("--offset", "-o", default="10h", type=get_timedelta,
+                        help="Range of random time between series")
     args = parser.parse_args()
-    data = generate()
+    data = generate(sensors = args.sensors, timespan=args.timespan, length=args.length, offset=args.offset)
     if args.db:
         _dump_db(data, args.db)
     if args.mqtt:

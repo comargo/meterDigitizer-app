@@ -2,34 +2,34 @@ import random
 from datetime import datetime, timedelta
 from math import ceil
 
-def _sensorSeries(sensorID, sensorName, startTime):
+def _sensorSeries(sensorID, sensorName, startTime,
+                  timespan, length, offset):
     curTime = startTime
     second = timedelta(seconds = 1)
-
-    count = random.randint(5,10)
     series = []
-    value = 0;
-    for _ in range(count):
-        offset = random.randint(10, 600)
-        length = random.randint(10, 600)
+    value = 0
+
+    while curTime < startTime+timespan:
+        randOffset = random.randrange(offset.total_seconds())
+        randLength = random.randrange(length.total_seconds())
         flowSpeed = random.random()
-        quantity = ceil(length*flowSpeed)
-        curTime += second*offset
+        quantity = ceil(randLength*flowSpeed)
+        curTime += second*randOffset
         for _ in range(quantity):
             curTime += second/flowSpeed;
             value += 1
-            series.append({
+            yield {
                 "timestamp": curTime.replace(microsecond=0),
                 "id": sensorID,
                 "name": sensorName,
                 "value": "%.3f"%(value/1000.0)
-            })
-    return series
+            }
 
-def generate(nSensors = 6):
+def generate(sensors,
+             timespan,
+             length,
+             offset):
     startTime = datetime.now().replace(microsecond=0)
-    data = []
-    for i in range(6):
-        data.extend(_sensorSeries(i, "sensor%s"%i, startTime))
-    data.sort(key = lambda dataEntry: dataEntry['timestamp'])
-    return data
+    for i in range(sensors):
+        for value in _sensorSeries(i, "sensor%s"%i, startTime, timespan, length, offset):
+            yield value
