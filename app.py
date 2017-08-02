@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import config
-import os, sys, datetime
+import os, sys, datetime, types
 import sqlite3
 from flask import Flask, render_template, request, json
 from diffirentiate_data import differentiate_data
@@ -13,6 +13,10 @@ class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime.date):
             return o.isoformat()
+        if isinstance(o, sqlite3.Row):
+            return dict(o)
+        if isinstance(o, types.GeneratorType):
+            return list(o)
         return json.JSONEncoder.default(self, o)
 
 class MeterDigitizer(Flask):
@@ -109,7 +113,7 @@ class MeterDigitizer(Flask):
                     WHERE "values"."id"=?
                     ORDER BY "timestamp"
                 ''', (sensor_id,))
-            data = differentiate_data(cursor);
+            data = differentiate_data(cursor, datetime.timedelta(minutes=1));
             return json.jsonify(data);
 
     #Database operations

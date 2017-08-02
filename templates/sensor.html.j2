@@ -19,16 +19,14 @@
     document.addEventListener("DOMContentLoaded", function(event) {
       loadJSON("{{ url_for('show_sensor_values', sensor_id = id) }}", function(values){
         var data = [];
-        for(track in values) {
-          data.push({
-            x: values[track].map(function(val){return new Date(val.timestamp)}),
-            y: values[track].map(function(val){return val.value}),
-            line: {shape: 'hv'}, 
-            type: 'scatter',
-            mode: 'lines',
-            name: track
-          })
-        }
+        data.push({
+          x: values.map(function(val){return new Date(val.timestamp)}),
+          y: values.map(function(val){return val.value}),
+          line: {shape: 'hv'},
+          type: 'scatter',
+          mode: 'lines',
+          name: "quantity"
+        })
         graph = document.getElementById('graph');
         graph.innerHTML = "";
         Plotly.newPlot(graph, data,
