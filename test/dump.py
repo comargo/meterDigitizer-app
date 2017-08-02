@@ -79,7 +79,7 @@ BEGIN TRANSACTION;
 DROP TABLE IF EXISTS "values";
 DROP TABLE IF EXISTS "sensors";
 COMMIT;""", file=output)
-        for line in db.iterdump():
+        for line in tqdm(db.iterdump(), "Save database"):
             print(line, file=output)
     #save data to sql
 
