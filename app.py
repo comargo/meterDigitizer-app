@@ -2,14 +2,14 @@
 import config
 import os, sys, datetime, types
 import sqlite3
-from flask import Flask, render_template, request, json
+import flask #import Flask, render_template, request, json
 from diffirentiate_data import differentiate_data
 import paho.mqtt.client
 
 if __name__ == '__main__':
     sys.exit("Use launch.py to start")
 
-class JSONEncoder(json.JSONEncoder):
+class JSONEncoder(flask.json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime.date):
             return o.isoformat()
@@ -17,15 +17,15 @@ class JSONEncoder(json.JSONEncoder):
             return dict(o)
         if isinstance(o, types.GeneratorType):
             return list(o)
-        return json.JSONEncoder.default(self, o)
+        return flask.json.JSONEncoder.default(self, o)
 
-class MeterDigitizer(Flask):
+class MeterDigitizer(flask.Flask):
     def __init__(self,
                  import_name=__name__,
                  mqtt_class=paho.mqtt.client.Client,
                  *args, **kwargs):
         kwargs['import_name'] = import_name
-        Flask.__init__(self, *args, **kwargs)
+        flask.Flask.__init__(self, *args, **kwargs)
         self.json_encoder = JSONEncoder
         self.mqtt_class = mqtt_class
         self.mqtt_client = None
@@ -59,7 +59,7 @@ class MeterDigitizer(Flask):
             self.logger.debug("Disconnected with result code %s", rc)
 
         def mqtt_on_message(client, userdata, msg):
-            jsonMsg = json.loads(msg.payload.decode())
+            jsonMsg = flask.json.loads(msg.payload.decode())
             with client.md_db:
                 if jsonMsg['id'] not in client.knownSensors:
                     client.md_db.execute('INSERT OR REPLACE INTO "sensors" VALUES (:id, :name)', jsonMsg)
@@ -91,7 +91,7 @@ class MeterDigitizer(Flask):
         @self.route('/')
         def index():
             rows = self.web_db.execute('SELECT * FROM "sensors" ORDER BY "id"')
-            return render_template("index.html.j2",
+            return flask.render_template("index.html.j2",
                 title="Meter Digitizer",
                 sensors=rows
             )
@@ -100,21 +100,32 @@ class MeterDigitizer(Flask):
         def show_sensor(sensor_id):
             sensor_name = self.web_db.execute('''SELECT name FROM sensors WHERE "id"=?''',
                                             (sensor_id,)).fetchone()["name"]
-            return render_template("sensor.html.j2",
+            return flask.render_template("sensor.html.j2",
                                    title = "Meter Digitizer: %s"%sensor_name,
                                    id = sensor_id
                                    )
 
         @self.route('/sensor/<int:sensor_id>.json')
         def show_sensor_values(sensor_id):
-            cursor = self.web_db.execute('''
-                SELECT "timestamp", "value"
-                    FROM "values"
-                    WHERE "values"."id"=?
-                    ORDER BY "timestamp"
-                ''', (sensor_id,))
-            data = differentiate_data(cursor, datetime.timedelta(minutes=1));
-            return json.jsonify(data);
+            def generator():
+                cursor = self.web_db.execute('''
+                    SELECT "timestamp", "value"
+                        FROM "values"
+                        WHERE "values"."id"=?
+                        ORDER BY "timestamp"
+                    ''', (sensor_id,))
+                data = differentiate_data(cursor, datetime.timedelta(minutes=1));
+                yield '[';
+                try:
+                    yield flask.json.dumps(next(data))
+                except StopIteration:
+                    yield ']'
+                    raise
+                for value in data:
+                    yield ','
+                    yield flask.json.dumps(value)
+                yield ']'
+            return self.response_class(flask.stream_with_context(generator()), mimetype=self.config['JSONIFY_MIMETYPE'])
 
     #Database operations
     def open_db(self):
